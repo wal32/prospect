@@ -3,86 +3,219 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProspectFlow AI</title>
+<title>ProspectFlow AI - CRM + WhatsApp + IA</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
-body{margin:0;font-family:Arial;background:#0f172a;color:#fff}
-.sidebar{width:220px;height:100vh;background:#020617;position:fixed;padding:20px}
-.sidebar h2{color:#38bdf8}
-.sidebar a{display:block;color:#94a3b8;text-decoration:none;margin:15px 0}
-.main{margin-left:240px;padding:20px}
-.card{background:#020617;padding:20px;border-radius:10px;margin-bottom:20px}
-button{background:#38bdf8;border:none;padding:10px;border-radius:5px;color:#000;cursor:pointer}
-.kanban{display:flex;gap:20px}
-.column{flex:1;background:#020617;padding:10px;border-radius:10px}
-.lead{background:#0f172a;margin:10px 0;padding:10px;border-radius:5px}
-input,textarea{width:100%;padding:10px;margin:5px 0;border:none;border-radius:5px}
+  .kanban-column { min-height: 400px; transition: all 0.2s; }
+  .lead-card { cursor: grab; }
+  .lead-card:active { cursor: grabbing; }
 </style>
 </head>
-<body>
+<body class="bg-slate-900 text-white">
 
-<div class="sidebar">
-<h2>ProspectFlow</h2>
-<a href="#">Dashboard</a>
-<a href="#crm">CRM</a>
-<a href="#automacao">Automação</a>
-<a href="#leads">Leads</a>
-<a href="#config">Config</a>
+<div class="flex h-screen">
+  <!-- Sidebar -->
+  <div class="w-64 bg-slate-800 p-5 flex flex-col">
+    <h2 class="text-2xl font-bold text-cyan-400 mb-8">ProspectFlow</h2>
+    <nav class="flex flex-col gap-3">
+      <a href="#" onclick="showSection('dashboard')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
+      <a href="#" onclick="showSection('crm')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-columns mr-2"></i> CRM Kanban</a>
+      <a href="#" onclick="showSection('whatsapp')" class="sidebar-link text-slate-300 hover:text-white"><i class="fab fa-whatsapp mr-2"></i> WhatsApp</a>
+      <a href="#" onclick="showSection('cnpj')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-building mr-2"></i> CNPJ</a>
+      <a href="#" onclick="showSection('bot')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-robot mr-2"></i> Bot IA</a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 overflow-y-auto p-6">
+    <!-- Dashboard -->
+    <div id="dashboard-section" class="space-y-6">
+      <h1 class="text-3xl font-bold">Dashboard</h1>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-slate-800 p-6 rounded-xl"><h3 class="text-xl">Leads Hoje</h3><p id="leads-today" class="text-4xl font-bold text-cyan-400">0</p></div>
+        <div class="bg-slate-800 p-6 rounded-xl"><h3 class="text-xl">Conversões</h3><p id="conversions" class="text-4xl font-bold text-green-400">0</p></div>
+        <div class="bg-slate-800 p-6 rounded-xl"><h3 class="text-xl">WhatsApp</h3><p id="wa-status" class="text-sm text-slate-400">Desconectado</p><button id="connectWaBtn" class="mt-2 bg-cyan-600 px-3 py-1 rounded text-sm">Conectar</button></div>
+      </div>
+      <div class="bg-slate-800 p-6 rounded-xl"><h2 class="text-xl mb-3">QR Code</h2><div id="qr-placeholder" class="bg-white inline-block p-2 rounded hidden"><img id="qr-img" class="w-40"></div></div>
+    </div>
+
+    <!-- CRM Kanban -->
+    <div id="crm-section" class="hidden space-y-4">
+      <div class="flex justify-between items-center"><h1 class="text-3xl font-bold">CRM Kanban</h1><button onclick="showAddLeadModal()" class="bg-cyan-600 px-4 py-2 rounded"><i class="fas fa-plus"></i> Novo Lead</button></div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-800 rounded-xl p-4"><h3 class="font-bold text-center text-cyan-400">📌 Novos</h3><div id="kanban-new" class="kanban-column mt-3 space-y-2"></div></div>
+        <div class="bg-slate-800 rounded-xl p-4"><h3 class="font-bold text-center text-yellow-400">📞 Contato</h3><div id="kanban-contact" class="kanban-column mt-3 space-y-2"></div></div>
+        <div class="bg-slate-800 rounded-xl p-4"><h3 class="font-bold text-center text-green-400">✅ Fechado</h3><div id="kanban-closed" class="kanban-column mt-3 space-y-2"></div></div>
+      </div>
+    </div>
+
+    <!-- WhatsApp Section -->
+    <div id="whatsapp-section" class="hidden space-y-6">
+      <h1 class="text-3xl font-bold">WhatsApp Prospector</h1>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-slate-800 p-5 rounded-xl"><h2>Grupos</h2><button id="loadGroupsBtn" class="bg-blue-600 px-3 py-1 rounded mt-2">Carregar grupos</button><div id="groupsList" class="mt-3 space-y-2 max-h-64 overflow-auto"></div></div>
+        <div class="bg-slate-800 p-5 rounded-xl"><h2>Envio em Massa</h2><textarea id="massMsg" rows="3" class="w-full bg-slate-700 p-2 rounded" placeholder="Mensagem..."></textarea><button id="sendMassBtn" class="bg-red-600 w-full mt-2 py-2 rounded">Enviar para todos os contatos extraídos</button><div id="sendResult" class="text-sm mt-2"></div></div>
+      </div>
+      <div class="bg-slate-800 p-5 rounded-xl"><h2>Contatos extraídos</h2><button id="exportCsvBtn" class="bg-emerald-600 px-3 py-1 rounded text-sm">Exportar CSV</button><button id="exportExcelBtn" class="bg-emerald-700 px-3 py-1 rounded text-sm">Exportar Excel</button><div id="contactsList" class="mt-3 max-h-64 overflow-auto text-sm"></div></div>
+    </div>
+
+    <!-- CNPJ Section -->
+    <div id="cnpj-section" class="hidden space-y-6">
+      <h1 class="text-3xl font-bold">Consulta CNPJ</h1>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-slate-800 p-5 rounded-xl"><input id="singleCnpj" class="w-full bg-slate-700 p-2 rounded" placeholder="CNPJ (apenas números)"><button id="searchSingleBtn" class="mt-2 bg-purple-600 w-full py-2 rounded">Consultar</button><div id="singleResult" class="mt-3 text-sm"></div></div>
+        <div class="bg-slate-800 p-5 rounded-xl"><textarea id="batchCnpjs" rows="4" class="w-full bg-slate-700 p-2 rounded" placeholder="Vários CNPJs (um por linha)"></textarea><button id="searchBatchBtn" class="mt-2 bg-amber-600 w-full py-2 rounded">Consultar em lote</button><div id="batchResult" class="mt-3 text-sm max-h-64 overflow-auto"></div></div>
+      </div>
+    </div>
+
+    <!-- Bot IA -->
+    <div id="bot-section" class="hidden space-y-6">
+      <h1 class="text-3xl font-bold">Automação com IA</h1>
+      <div class="bg-slate-800 p-5 rounded-xl"><div class="flex justify-between"><span>Bot ativo</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="botToggle" class="sr-only peer"><div class="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:bg-green-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div></label></div>
+      <div class="mt-4"><label>Chave OpenAI (opcional)</label><input type="password" id="apiKeyInput" class="w-full bg-slate-700 p-2 rounded"><button id="saveApiBtn" class="mt-1 bg-slate-600 px-3 py-1 rounded">Salvar</button></div>
+      <div class="mt-4"><label>Testar IA</label><div class="flex gap-2"><input id="testMsg" class="flex-1 bg-slate-700 p-2 rounded" placeholder="Digite uma pergunta"><button id="testAiBtn" class="bg-purple-600 px-4 py-2 rounded">Enviar</button></div><div id="testResponse" class="mt-2 text-sm bg-slate-900 p-2 rounded"></div></div></div>
+    </div>
+  </div>
 </div>
 
-<div class="main">
+<!-- Modal Adicionar Lead -->
+<div id="leadModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center"><div class="bg-slate-800 p-6 rounded-xl w-96"><h2 class="text-xl mb-3">Novo Lead</h2><input id="leadName" class="w-full bg-slate-700 p-2 rounded mb-2" placeholder="Nome"><input id="leadPhone" class="w-full bg-slate-700 p-2 rounded mb-2" placeholder="WhatsApp"><textarea id="leadNote" class="w-full bg-slate-700 p-2 rounded mb-4" placeholder="Observações"></textarea><div class="flex gap-2"><button onclick="saveLead()" class="bg-cyan-600 flex-1 py-2 rounded">Salvar</button><button onclick="closeModal()" class="bg-slate-600 flex-1 py-2 rounded">Cancelar</button></div></div></div>
 
-<div class="card">
-<h1>Dashboard</h1>
-<p>Leads hoje: 12</p>
-<p>Conversões: 3</p>
-</div>
+<script>
+  const socket = io();
+  let currentContacts = [];
+  let leads = [];
 
-<div class="card" id="crm">
-<h2>CRM Kanban</h2>
-<div class="kanban">
-<div class="column">
-<h3>Novos</h3>
-<div class="lead">João - Interesse</div>
-</div>
-<div class="column">
-<h3>Contato</h3>
-<div class="lead">Maria - Respondeu</div>
-</div>
-<div class="column">
-<h3>Fechado</h3>
-<div class="lead">Carlos - Cliente</div>
-</div>
-</div>
-</div>
+  function showSection(section) {
+    document.querySelectorAll('[id$="-section"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById(`${section}-section`).classList.remove('hidden');
+  }
+  window.showSection = showSection;
 
-<div class="card" id="leads">
-<h2>Adicionar Lead</h2>
-<input placeholder="Nome">
-<input placeholder="WhatsApp">
-<textarea placeholder="Observação"></textarea>
-<button>Salvar</button>
-</div>
+  // Socket WhatsApp
+  socket.on('qr', (qr) => { document.getElementById('qr-placeholder').classList.remove('hidden'); document.getElementById('qr-img').src = qr; });
+  socket.on('ready', () => { document.getElementById('wa-status').innerHTML = '<span class="text-green-400">Conectado</span>'; document.getElementById('qr-placeholder').classList.add('hidden'); });
+  document.getElementById('connectWaBtn').onclick = () => fetch('/api/connect', { method: 'POST' });
 
-<div class="card" id="automacao">
-<h2>Automação IA</h2>
-<textarea placeholder="Mensagem automática"></textarea>
-<button>Ativar Automação</button>
-</div>
+  // Carregar grupos
+  document.getElementById('loadGroupsBtn').onclick = async () => {
+    const res = await fetch('/api/groups');
+    const groups = await res.json();
+    if(groups.error) return alert(groups.error);
+    document.getElementById('groupsList').innerHTML = groups.map(g => `<div class="bg-slate-700 p-2 rounded cursor-pointer" data-id="${g.id}">📢 ${g.name} (${g.participantCount})</div>`).join('');
+    document.querySelectorAll('[data-id]').forEach(el => el.addEventListener('click', async (e) => {
+      const groupId = el.dataset.id;
+      const resp = await fetch('/api/extract-contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId }) });
+      const contacts = await resp.json();
+      currentContacts = contacts;
+      document.getElementById('contactsList').innerHTML = contacts.map(c => `<div>👤 ${c.name} - ${c.number}</div>`).join('');
+    }));
+  };
 
-<div class="card" id="config">
-<h2>Integração</h2>
-<p>Conectar WhatsApp (QR Code)</p>
-<button>Conectar</button>
-</div>
+  // Envio em massa
+  document.getElementById('sendMassBtn').onclick = async () => {
+    if(!currentContacts.length) return alert('Nenhum contato extraído');
+    const message = document.getElementById('massMsg').value;
+    if(!message) return alert('Digite uma mensagem');
+    const numbers = currentContacts.map(c => c.number);
+    const res = await fetch('/api/send-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numbers, message, delayMs: 2000 }) });
+    const data = await res.json();
+    document.getElementById('sendResult').innerHTML = `Enviado: ${data.results.filter(r=>r.status==='success').length} de ${data.results.length}`;
+  };
 
-</div>
+  // Exportar
+  document.getElementById('exportCsvBtn').onclick = () => {
+    let csv = "Nome,Número\n"+currentContacts.map(c=>`"${c.name}","${c.number}"`).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'}); const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download='contatos.csv'; link.click();
+  };
+  document.getElementById('exportExcelBtn').onclick = async () => {
+    const res = await fetch('/api/export-contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contacts: currentContacts }) });
+    const blob = await res.blob(); const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download='contatos.xlsx'; link.click();
+  };
 
+  // CNPJ
+  document.getElementById('searchSingleBtn').onclick = async () => {
+    const cnpj = document.getElementById('singleCnpj').value;
+    const res = await fetch('/api/search-cnpj', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cnpj }) });
+    const data = await res.json();
+    document.getElementById('singleResult').innerHTML = data.error ? `<p class="text-red-400">${data.error}</p>` : `<p><strong>${data.razao_social}</strong><br>📞 ${data.telefone}<br>📧 ${data.email}<br>📍 ${data.endereco}</p>`;
+  };
+  document.getElementById('searchBatchBtn').onclick = async () => {
+    const raw = document.getElementById('batchCnpjs').value;
+    const cnpjs = raw.split(/\r?\n/).filter(l=>l.trim());
+    const res = await fetch('/api/search-multiple-cnpj', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cnpjs }) });
+    const results = await res.json();
+    document.getElementById('batchResult').innerHTML = `<table class="w-full text-xs"><tbody>${results.map(r=>`<tr><td>${r.cnpj}</td><td>${r.razao_social||r.error}</td><td>${r.telefone||'-'}</td></tr>`).join('')}</tbody></table>`;
+  };
+
+  // Bot IA
+  fetch('/api/bot/status').then(r=>r.json()).then(data => { document.getElementById('botToggle').checked = data.botActive; });
+  document.getElementById('botToggle').onchange = async (e) => { await fetch('/api/bot/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: e.target.checked }) }); };
+  document.getElementById('saveApiBtn').onclick = async () => { const apiKey = document.getElementById('apiKeyInput').value; if(apiKey) await fetch('/api/bot/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey }) }); alert('Chave salva'); };
+  document.getElementById('testAiBtn').onclick = async () => { const msg = document.getElementById('testMsg').value; const res = await fetch('/api/bot/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }) }); const data = await res.json(); document.getElementById('testResponse').innerHTML = data.resposta; };
+
+  // CRM - carregar leads e renderizar Kanban
+  async function loadLeads() {
+    const res = await fetch('/api/leads');
+    leads = await res.json();
+    renderKanban();
+    updateDashboard();
+  }
+  function renderKanban() {
+    const stages = { new: 'kanban-new', contact: 'kanban-contact', closed: 'kanban-closed' };
+    for (let stage in stages) document.getElementById(stages[stage]).innerHTML = '';
+    leads.forEach(lead => {
+      const card = document.createElement('div');
+      card.className = 'lead-card bg-slate-700 p-3 rounded cursor-pointer';
+      card.setAttribute('data-id', lead.id);
+      card.innerHTML = `<div class="font-bold">${lead.name}</div><div class="text-xs text-slate-300">${lead.phone || ''}</div><div class="text-xs truncate">${lead.note || ''}</div><button class="text-red-400 text-xs mt-1" onclick="deleteLead(${lead.id})">🗑️ Remover</button>`;
+      document.getElementById(stages[lead.stage]).appendChild(card);
+    });
+    // SortableJS para drag & drop
+    ['kanban-new', 'kanban-contact', 'kanban-closed'].forEach(colId => {
+      const el = document.getElementById(colId);
+      new Sortable(el, { group: 'kanban', animation: 150, onEnd: async (evt) => {
+        const leadId = parseInt(evt.item.getAttribute('data-id'));
+        const newStage = { 'kanban-new': 'new', 'kanban-contact': 'contact', 'kanban-closed': 'closed' }[evt.to.id];
+        await fetch(`/api/leads/${leadId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage: newStage }) });
+        loadLeads();
+      }});
+    });
+  }
+  async function deleteLead(id) { await fetch(`/api/leads/${id}`, { method: 'DELETE' }); loadLeads(); }
+  window.deleteLead = deleteLead;
+  function showAddLeadModal() { document.getElementById('leadModal').classList.add('flex'); document.getElementById('leadModal').classList.remove('hidden'); }
+  window.showAddLeadModal = showAddLeadModal;
+  function closeModal() { document.getElementById('leadModal').classList.add('hidden'); document.getElementById('leadModal').classList.remove('flex'); }
+  window.closeModal = closeModal;
+  async function saveLead() {
+    const name = document.getElementById('leadName').value;
+    const phone = document.getElementById('leadPhone').value;
+    const note = document.getElementById('leadNote').value;
+    if(!name) return;
+    await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, note, stage: 'new' }) });
+    closeModal();
+    loadLeads();
+  }
+  window.saveLead = saveLead;
+  function updateDashboard() {
+    const today = new Date().toDateString();
+    const leadsToday = leads.filter(l => new Date(l.createdAt).toDateString() === today).length;
+    const conversions = leads.filter(l => l.stage === 'closed').length;
+    document.getElementById('leads-today').innerText = leadsToday;
+    document.getElementById('conversions').innerText = conversions;
+  }
+  loadLeads();
+  setInterval(() => fetch('/api/bot/status').then(r=>r.json()).then(data => { document.getElementById('botToggle').checked = data.botActive; }), 5000);
+  showSection('dashboard');
+</script>
 </body>
 </html>
-    
 
-  
-  
+
         
        
  
