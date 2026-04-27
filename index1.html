@@ -1,228 +1,606 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProspectFlow AI - CRM + WhatsApp + IA</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<style>
-  .kanban-column { min-height: 400px; transition: all 0.2s; }
-  .lead-card { cursor: grab; }
-  .lead-card:active { cursor: grabbing; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>LeadPro AI · Plataforma de Prospecção Autônoma</title>
+    <!-- Chart.js CDN para métricas em tempo real -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome 6 (gratuito) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f4f8;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            padding: 24px 20px;
+            color: #1a2634;
+        }
+
+        /* container principal */
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* cabeçalho */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+            background: white;
+            padding: 18px 28px;
+            border-radius: 32px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2e8f0;
+        }
+
+        .logo h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #0f2b3d, #1b4a6e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .logo span {
+            font-size: 0.8rem;
+            background: #eef2ff;
+            padding: 4px 10px;
+            border-radius: 40px;
+            color: #1e40af;
+            font-weight: 500;
+            margin-left: 12px;
+        }
+
+        .status-badge {
+            background: #e6f7ec;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #0e6b2b;
+        }
+
+        .status-badge i {
+            margin-right: 6px;
+            font-size: 0.8rem;
+        }
+
+        /* grade de cards extratores */
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 28px;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e9eef3;
+            transition: all 0.2s;
+        }
+
+        .card h3 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.35rem;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .card h3 i {
+            font-size: 1.6rem;
+            color: #2c6e9e;
+        }
+
+        .extrator-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .extrator-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 48px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9rem;
+            background: #fafcff;
+        }
+
+        button {
+            background: #1f4e7a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 48px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        button i {
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background: #0e3a5c;
+            transform: scale(0.98);
+        }
+
+        .lead-preview {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 12px;
+            font-size: 0.8rem;
+            margin-top: 14px;
+            max-height: 140px;
+            overflow-y: auto;
+            border-left: 3px solid #2c6e9e;
+        }
+
+        /* funis modulares */
+        .funis-section {
+            background: white;
+            border-radius: 28px;
+            padding: 24px;
+            margin-bottom: 40px;
+            border: 1px solid #e9eef3;
+        }
+
+        .funis-tabs {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0 16px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: #eef2ff;
+            color: #1f4e7a;
+        }
+
+        .tab-active {
+            background: #1f4e7a;
+            color: white;
+        }
+
+        .funnel-content {
+            background: #f9fbfe;
+            border-radius: 24px;
+            padding: 20px;
+            margin-top: 10px;
+        }
+
+        .prompt-area {
+            width: 100%;
+            padding: 12px;
+            border-radius: 20px;
+            border: 1px solid #cbd5e1;
+            margin: 12px 0;
+            font-family: monospace;
+        }
+
+        /* agente IA chat */
+        .chat-agent {
+            background: white;
+            border-radius: 28px;
+            padding: 24px;
+            margin-bottom: 40px;
+        }
+
+        .chat-window {
+            background: #f1f5f9;
+            height: 280px;
+            border-radius: 24px;
+            padding: 16px;
+            overflow-y: auto;
+            margin: 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            padding: 8px 14px;
+            border-radius: 24px;
+            max-width: 80%;
+            font-size: 0.9rem;
+        }
+
+        .user-msg {
+            background: #1f4e7a;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .ai-msg {
+            background: white;
+            border: 1px solid #cbd5e1;
+            align-self: flex-start;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* métricas e gráficos */
+        .metricas-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 24px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        .metric-number {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: #1f4e7a;
+        }
+
+        canvas {
+            max-height: 200px;
+            margin-top: 10px;
+        }
+
+        .whatsapp-painel {
+            background: #e9f5e9;
+            border-radius: 24px;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #5b6e8c;
+        }
+        hr {
+            margin: 20px 0;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-white">
-
-<div class="flex h-screen">
-  <!-- Sidebar -->
-  <div class="w-64 bg-slate-800 p-5 flex flex-col">
-    <h2 class="text-2xl font-bold text-cyan-400 mb-8">ProspectFlow</h2>
-    <nav class="flex flex-col gap-3">
-      <a href="#" onclick="showSection('dashboard')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
-      <a href="#" onclick="showSection('crm')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-columns mr-2"></i> CRM Kanban</a>
-      <a href="#" onclick="showSection('whatsapp')" class="sidebar-link text-slate-300 hover:text-white"><i class="fab fa-whatsapp mr-2"></i> WhatsApp</a>
-      <a href="#" onclick="showSection('cnpj')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-building mr-2"></i> CNPJ</a>
-      <a href="#" onclick="showSection('bot')" class="sidebar-link text-slate-300 hover:text-white"><i class="fas fa-robot mr-2"></i> Bot IA</a>
-    </nav>
-  </div>
-
-  <!-- Main Content -->
-  <div class="flex-1 overflow-y-auto p-6">
-    <!-- Dashboard -->
-    <div id="dashboard-section" class="space-y-6">
-      <h1 class="text-3xl font-bold">Dashboard</h1>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-slate-800 p-6 rounded-xl"><h3 class="text-xl">Leads Hoje</h3><p id="leads-today" class="text-4xl font-bold text-cyan-400">0</p></div>
-        <div class="bg-slate-800 p-6 rounded-xl"><h3 class="text-xl">Conversões</h3><p id="conversions" class="text-4xl font-bold text-green-400">0</p></div>
-        <div class="bg-slate-800 p-6 rounded-xl"><h3 class="text-xl">WhatsApp</h3><p id="wa-status" class="text-sm text-slate-400">Desconectado</p><button id="connectWaBtn" class="mt-2 bg-cyan-600 px-3 py-1 rounded text-sm">Conectar</button></div>
-      </div>
-      <div class="bg-slate-800 p-6 rounded-xl"><h2 class="text-xl mb-3">QR Code</h2><div id="qr-placeholder" class="bg-white inline-block p-2 rounded hidden"><img id="qr-img" class="w-40"></div></div>
+<body>
+<div class="dashboard">
+    <div class="header">
+        <div class="logo">
+            <h1>LeadForge AI <span>prospecção autônoma</span></h1>
+            <div style="font-size: 0.75rem; margin-top: 6px;">funis + IA 24/7 · sem equipe · escala real</div>
+        </div>
+        <div class="status-badge"><i class="fas fa-circle-notch fa-spin"></i> Sistema ativo · IA qualificadora online</div>
     </div>
 
-    <!-- CRM Kanban -->
-    <div id="crm-section" class="hidden space-y-4">
-      <div class="flex justify-between items-center"><h1 class="text-3xl font-bold">CRM Kanban</h1><button onclick="showAddLeadModal()" class="bg-cyan-600 px-4 py-2 rounded"><i class="fas fa-plus"></i> Novo Lead</button></div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-slate-800 rounded-xl p-4"><h3 class="font-bold text-center text-cyan-400">📌 Novos</h3><div id="kanban-new" class="kanban-column mt-3 space-y-2"></div></div>
-        <div class="bg-slate-800 rounded-xl p-4"><h3 class="font-bold text-center text-yellow-400">📞 Contato</h3><div id="kanban-contact" class="kanban-column mt-3 space-y-2"></div></div>
-        <div class="bg-slate-800 rounded-xl p-4"><h3 class="font-bold text-center text-green-400">✅ Fechado</h3><div id="kanban-closed" class="kanban-column mt-3 space-y-2"></div></div>
-      </div>
+    <!-- EXTRATORES DE LEADS: Google Maps, Instagram, CNPJ -->
+    <div class="grid-cards">
+        <!-- Google Maps Extractor -->
+        <div class="card">
+            <h3><i class="fab fa-google"></i> Google Maps</h3>
+            <div class="extrator-input">
+                <input type="text" id="mapsKeyword" placeholder="Ex: restaurantes em São Paulo" value="advogados SP">
+                <button id="extractMapsBtn"><i class="fas fa-download"></i> Capturar leads</button>
+            </div>
+            <div class="lead-preview" id="mapsLeadsPreview">Nenhum lead capturado ainda. Clique para extrair (simulação realista).</div>
+        </div>
+        <!-- Instagram Extractor -->
+        <div class="card">
+            <h3><i class="fab fa-instagram"></i> Instagram</h3>
+            <div class="extrator-input">
+                <input type="text" id="igProfile" placeholder="Perfil/hashtag: @marketingdigital">
+                <button id="extractIgBtn"><i class="fas fa-download"></i> Extrair seguidores</button>
+            </div>
+            <div class="lead-preview" id="igLeadsPreview">Clique para extrair leads (simulação).</div>
+        </div>
+        <!-- CNPJ Extractor -->
+        <div class="card">
+            <h3><i class="fas fa-building"></i> Leads por CNPJ</h3>
+            <div class="extrator-input">
+                <input type="text" id="cnpjQuery" placeholder="Ramo ou CNPJ inicial">
+                <button id="extractCnpjBtn"><i class="fas fa-chart-line"></i> Buscar CNPJs</button>
+            </div>
+            <div class="lead-preview" id="cnpjLeadsPreview">Empresas ativas serão listadas aqui.</div>
+        </div>
     </div>
 
-    <!-- WhatsApp Section -->
-    <div id="whatsapp-section" class="hidden space-y-6">
-      <h1 class="text-3xl font-bold">WhatsApp Prospector</h1>
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="bg-slate-800 p-5 rounded-xl"><h2>Grupos</h2><button id="loadGroupsBtn" class="bg-blue-600 px-3 py-1 rounded mt-2">Carregar grupos</button><div id="groupsList" class="mt-3 space-y-2 max-h-64 overflow-auto"></div></div>
-        <div class="bg-slate-800 p-5 rounded-xl"><h2>Envio em Massa</h2><textarea id="massMsg" rows="3" class="w-full bg-slate-700 p-2 rounded" placeholder="Mensagem..."></textarea><button id="sendMassBtn" class="bg-red-600 w-full mt-2 py-2 rounded">Enviar para todos os contatos extraídos</button><div id="sendResult" class="text-sm mt-2"></div></div>
-      </div>
-      <div class="bg-slate-800 p-5 rounded-xl"><h2>Contatos extraídos</h2><button id="exportCsvBtn" class="bg-emerald-600 px-3 py-1 rounded text-sm">Exportar CSV</button><button id="exportExcelBtn" class="bg-emerald-700 px-3 py-1 rounded text-sm">Exportar Excel</button><div id="contactsList" class="mt-3 max-h-64 overflow-auto text-sm"></div></div>
+    <!-- FUNIS MODULARES: ÁUDIO / IMAGEM / PDF -->
+    <div class="funis-section">
+        <h3><i class="fas fa-funnel-dollar"></i> Funis modulares · Áudio | Imagem | PDF</h3>
+        <div class="funis-tabs">
+            <button class="tab-btn tab-active" data-funnel="audio">🎙️ Áudio Lead Magnet</button>
+            <button class="tab-btn" data-funnel="image">🖼️ Imagem + Oferta</button>
+            <button class="tab-btn" data-funnel="pdf">📄 PDF Conversão</button>
+        </div>
+        <div class="funnel-content" id="funnelContent">
+            <!-- conteúdo dinâmico via JS -->
+            <div><i class="fas fa-microphone-alt"></i> Prompt de atendimento e disparo para funil de áudio</div>
+            <textarea class="prompt-area" id="promptAudio" rows="2">🎧 Olá! Ouça nosso áudio exclusivo sobre estratégias de vendas. Após escutar, me diga: qual seu maior desafio agora? Assim ativamos IA qualificadora.</textarea>
+            <button id="simulateFunnelAudio"><i class="fas fa-paper-plane"></i> Simular disparo para lead (WhatsApp)</button>
+        </div>
     </div>
 
-    <!-- CNPJ Section -->
-    <div id="cnpj-section" class="hidden space-y-6">
-      <h1 class="text-3xl font-bold">Consulta CNPJ</h1>
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="bg-slate-800 p-5 rounded-xl"><input id="singleCnpj" class="w-full bg-slate-700 p-2 rounded" placeholder="CNPJ (apenas números)"><button id="searchSingleBtn" class="mt-2 bg-purple-600 w-full py-2 rounded">Consultar</button><div id="singleResult" class="mt-3 text-sm"></div></div>
-        <div class="bg-slate-800 p-5 rounded-xl"><textarea id="batchCnpjs" rows="4" class="w-full bg-slate-700 p-2 rounded" placeholder="Vários CNPJs (um por linha)"></textarea><button id="searchBatchBtn" class="mt-2 bg-amber-600 w-full py-2 rounded">Consultar em lote</button><div id="batchResult" class="mt-3 text-sm max-h-64 overflow-auto"></div></div>
-      </div>
+    <!-- AGENTE IA 24x7 QUALIFICADORA + WHATSAPP (sem VPS) -->
+    <div class="chat-agent">
+        <h3><i class="fas fa-robot"></i> Agente IA qualificadora 24x7 · WhatsApp integrado</h3>
+        <div class="chat-window" id="chatWindow">
+            <div class="message ai-msg">🤖 Olá! Sou a assistente virtual LeadIA. Posso qualificar leads, enviar funis e agendar reuniões. Clique em conectar WhatsApp e comece.</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Digite como lead ou teste..." style="flex:1; padding: 12px; border-radius: 40px; border:1px solid #ccc;">
+            <button id="sendChatBtn"><i class="fab fa-whatsapp"></i> Enviar (simular)</button>
+        </div>
+        <div class="whatsapp-painel" style="margin-top: 20px;">
+            <div><i class="fab fa-whatsapp fa-2x" style="color:#25D366;"></i> <strong>Conecte WhatsApp oficial</strong><br>sem VPS, sem domínio via QR Code.</div>
+            <button id="connectWhatsappBtn"><i class="fas fa-link"></i> Conectar WhatsApp (demo)</button>
+            <span id="wpStatus" style="font-size:0.8rem;">🔴 Desconectado</span>
+        </div>
     </div>
 
-    <!-- Bot IA -->
-    <div id="bot-section" class="hidden space-y-6">
-      <h1 class="text-3xl font-bold">Automação com IA</h1>
-      <div class="bg-slate-800 p-5 rounded-xl"><div class="flex justify-between"><span>Bot ativo</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="botToggle" class="sr-only peer"><div class="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:bg-green-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div></label></div>
-      <div class="mt-4"><label>Chave OpenAI (opcional)</label><input type="password" id="apiKeyInput" class="w-full bg-slate-700 p-2 rounded"><button id="saveApiBtn" class="mt-1 bg-slate-600 px-3 py-1 rounded">Salvar</button></div>
-      <div class="mt-4"><label>Testar IA</label><div class="flex gap-2"><input id="testMsg" class="flex-1 bg-slate-700 p-2 rounded" placeholder="Digite uma pergunta"><button id="testAiBtn" class="bg-purple-600 px-4 py-2 rounded">Enviar</button></div><div id="testResponse" class="mt-2 text-sm bg-slate-900 p-2 rounded"></div></div></div>
+    <!-- MÉTRICAS CLARAS + COMPARAÇÃO CANAIS -->
+    <div class="metricas-row">
+        <div class="metric-card">
+            <i class="fas fa-envelope-open-text"></i>
+            <div class="metric-number" id="totalEnvios">0</div>
+            <div>Total envios (campanhas)</div>
+        </div>
+        <div class="metric-card">
+            <i class="fas fa-reply-all"></i>
+            <div class="metric-number" id="totalRespostas">0</div>
+            <div>Respostas de leads</div>
+        </div>
+        <div class="metric-card">
+            <i class="fas fa-chart-line"></i>
+            <div class="metric-number" id="taxaResposta">0%</div>
+            <div>Taxa de resposta</div>
+        </div>
+        <div class="metric-card">
+            <canvas id="canalChart" width="200" height="120" style="max-width:100%; height:auto;"></canvas>
+            <div style="font-size:0.7rem;">Aquisição por canal (Maps, IG, CNPJ)</div>
+        </div>
     </div>
-  </div>
+
+    <!-- AJUSTE DE CAMPANHAS COM BASE EM DADOS -->
+    <div class="card" style="margin-bottom: 40px;">
+        <h3><i class="fas fa-sliders-h"></i> Ajuste inteligente de campanhas</h3>
+        <label>Meta de respostas/dia: <span id="metaValue">20</span></label>
+        <input type="range" id="metaSlider" min="5" max="100" value="20" style="width:100%; margin: 10px 0;">
+        <p>IA ajusta proatividade com base nas taxas atuais. <span id="insightText">Com base em dados, sua taxa atual é baixa. Sugerimos alterar criativos.</span></p>
+        <button id="aplicarAjusteIA"><i class="fas fa-chart-simple"></i> Aplicar otimização automática</button>
+    </div>
+
+    <footer>
+        <i class="fas fa-cloud-upload-alt"></i> Arquitetura serverless · zero compilação · pronto para escalar. Dados simulados para demonstração operacional.
+    </footer>
 </div>
 
-<!-- Modal Adicionar Lead -->
-<div id="leadModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center"><div class="bg-slate-800 p-6 rounded-xl w-96"><h2 class="text-xl mb-3">Novo Lead</h2><input id="leadName" class="w-full bg-slate-700 p-2 rounded mb-2" placeholder="Nome"><input id="leadPhone" class="w-full bg-slate-700 p-2 rounded mb-2" placeholder="WhatsApp"><textarea id="leadNote" class="w-full bg-slate-700 p-2 rounded mb-4" placeholder="Observações"></textarea><div class="flex gap-2"><button onclick="saveLead()" class="bg-cyan-600 flex-1 py-2 rounded">Salvar</button><button onclick="closeModal()" class="bg-slate-600 flex-1 py-2 rounded">Cancelar</button></div></div></div>
-
 <script>
-  const socket = io();
-  let currentContacts = [];
-  let leads = [];
+    // ---------- SIMULAÇÃO DE DADOS E ESTADO ----------
+    let leads = {
+        maps: [],
+        instagram: [],
+        cnpj: []
+    };
+    let metricas = {
+        envios: 0,
+        respostas: 0,
+        porCanal: { maps:0, instagram:0, cnpj:0 }
+    };
+    let wpConnected = false;
 
-  function showSection(section) {
-    document.querySelectorAll('[id$="-section"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById(`${section}-section`).classList.remove('hidden');
-  }
-  window.showSection = showSection;
+    // Atualizar métricas na UI
+    function atualizarMetricasUI() {
+        document.getElementById('totalEnvios').innerText = metricas.envios;
+        document.getElementById('totalRespostas').innerText = metricas.respostas;
+        let taxa = metricas.envios === 0 ? 0 : ((metricas.respostas / metricas.envios)*100).toFixed(1);
+        document.getElementById('taxaResposta').innerText = taxa+'%';
+        // gráfico comparativo
+        if(window.canalChartObj) {
+            window.canalChartObj.data.datasets[0].data = [metricas.porCanal.maps, metricas.porCanal.instagram, metricas.porCanal.cnpj];
+            window.canalChartObj.update();
+        }
+        // insight slider
+        let meta = document.getElementById('metaSlider').value;
+        if(metricas.respostas < meta) {
+            document.getElementById('insightText').innerHTML = '⚠️ Taxa de resposta abaixo da meta. IA recomenda revisar prompt de abordagem e funil multimídia.';
+        } else {
+            document.getElementById('insightText').innerHTML = '✅ Performance saudável! Considere aumentar orçamento de extração.';
+        }
+    }
 
-  // Socket WhatsApp
-  socket.on('qr', (qr) => { document.getElementById('qr-placeholder').classList.remove('hidden'); document.getElementById('qr-img').src = qr; });
-  socket.on('ready', () => { document.getElementById('wa-status').innerHTML = '<span class="text-green-400">Conectado</span>'; document.getElementById('qr-placeholder').classList.add('hidden'); });
-  document.getElementById('connectWaBtn').onclick = () => fetch('/api/connect', { method: 'POST' });
+    // extração simulada MAS COM DADOS FICTÍCIOS realistas
+    function extrairLeads(origem, query) {
+        let novos = [];
+        if(origem === 'maps') {
+            for(let i=1;i<=8;i++) novos.push({ nome: `Lead Maps ${i}`, contato: `${i}1 98765-000${i}`, empresa: `${query} - unidade ${i}` });
+            leads.maps = [...leads.maps, ...novos];
+            document.getElementById('mapsLeadsPreview').innerHTML = novos.map(l=>`📌 ${l.nome} | ${l.empresa}`).join('<br>') + (leads.maps.length>8?' ...mais leads disponíveis':'');
+            metricas.porCanal.maps += novos.length;
+        } else if(origem === 'instagram') {
+            for(let i=1;i<=6;i++) novos.push({ perfil: `@user_${i}`, seguidores: Math.floor(Math.random()*5000), bio: 'potencial cliente' });
+            leads.instagram = [...leads.instagram, ...novos];
+            document.getElementById('igLeadsPreview').innerHTML = novos.map(l=>`📸 ${l.perfil} | ${l.seguidores} seguidores`).join('<br>');
+            metricas.porCanal.instagram += novos.length;
+        } else if(origem === 'cnpj') {
+            for(let i=1;i<=5;i++) novos.push({ razao: `Empresa ${query} LTDA ${i}`, cnpj: `12.345.678/${i}001-${i}0`, telefone: `(11) 9${1000+i}` });
+            leads.cnpj = [...leads.cnpj, ...novos];
+            document.getElementById('cnpjLeadsPreview').innerHTML = novos.map(l=>`🏢 ${l.razao} | CNPJ: ${l.cnpj}`).join('<br>');
+            metricas.porCanal.cnpj += novos.length;
+        }
+        atualizarMetricasUI();
+        // Notificação de lead capturado em massa
+        alert(`✅ +${novos.length} leads de ${origem.toUpperCase()} capturados. Envie mensagens via WhatsApp agora.`);
+    }
 
-  // Carregar grupos
-  document.getElementById('loadGroupsBtn').onclick = async () => {
-    const res = await fetch('/api/groups');
-    const groups = await res.json();
-    if(groups.error) return alert(groups.error);
-    document.getElementById('groupsList').innerHTML = groups.map(g => `<div class="bg-slate-700 p-2 rounded cursor-pointer" data-id="${g.id}">📢 ${g.name} (${g.participantCount})</div>`).join('');
-    document.querySelectorAll('[data-id]').forEach(el => el.addEventListener('click', async (e) => {
-      const groupId = el.dataset.id;
-      const resp = await fetch('/api/extract-contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId }) });
-      const contacts = await resp.json();
-      currentContacts = contacts;
-      document.getElementById('contactsList').innerHTML = contacts.map(c => `<div>👤 ${c.name} - ${c.number}</div>`).join('');
-    }));
-  };
+    // simular envio de mensagem (incrementa métrica de envio)
+    function simularEnvioWhatsapp(leadDestino, canalOrigem) {
+        if(!wpConnected) {
+            alert("⚠️ Conecte o WhatsApp primeiro (demo) clicando em 'Conectar WhatsApp'. Ative modo simulação.");
+            return false;
+        }
+        metricas.envios++;
+        atualizarMetricasUI();
+        adicionarMensagemChat("Sistema", `📨 Mensagem enviada para ${leadDestino} via WhatsApp (funil ativo).`, "ai");
+        // possibilidade de resposta simulada com IA após 2s (qualificadora)
+        setTimeout(() => {
+            let respondeu = Math.random() > 0.4; // 60% de resposta
+            if(respondeu) {
+                metricas.respostas++;
+                atualizarMetricasUI();
+                adicionarMensagemChat("IA Qualificadora", `✨ Lead respondeu: "Gostei da oferta, quero saber mais!" Qualificado como quente.`, "ai");
+            } else {
+                adicionarMensagemChat("IA", "⏳ Ainda sem resposta, agendando follow-up em 3h.", "ai");
+            }
+        }, 1500);
+        return true;
+    }
 
-  // Envio em massa
-  document.getElementById('sendMassBtn').onclick = async () => {
-    if(!currentContacts.length) return alert('Nenhum contato extraído');
-    const message = document.getElementById('massMsg').value;
-    if(!message) return alert('Digite uma mensagem');
-    const numbers = currentContacts.map(c => c.number);
-    const res = await fetch('/api/send-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numbers, message, delayMs: 2000 }) });
-    const data = await res.json();
-    document.getElementById('sendResult').innerHTML = `Enviado: ${data.results.filter(r=>r.status==='success').length} de ${data.results.length}`;
-  };
+    // assistente de chat
+    function adicionarMensagemChat(remetente, texto, tipo='ai') {
+        const chatDiv = document.getElementById('chatWindow');
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message');
+        msgDiv.classList.add(tipo === 'ai' ? 'ai-msg' : 'user-msg');
+        msgDiv.innerHTML = `<strong>${remetente === 'Sistema' ? '🤖' : (tipo==='ai'? '🤖 IA' : '👤 Você')}</strong><br>${texto}`;
+        chatDiv.appendChild(msgDiv);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
 
-  // Exportar
-  document.getElementById('exportCsvBtn').onclick = () => {
-    let csv = "Nome,Número\n"+currentContacts.map(c=>`"${c.name}","${c.number}"`).join('\n');
-    const blob = new Blob([csv], {type:'text/csv'}); const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download='contatos.csv'; link.click();
-  };
-  document.getElementById('exportExcelBtn').onclick = async () => {
-    const res = await fetch('/api/export-contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contacts: currentContacts }) });
-    const blob = await res.blob(); const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download='contatos.xlsx'; link.click();
-  };
+    // INICIALIZAÇÃO GRÁFICO E EVENTOS
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('canalChart').getContext('2d');
+        window.canalChartObj = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Google Maps', 'Instagram', 'CNPJ'],
+                datasets: [{
+                    label: 'Leads capturados',
+                    data: [metricas.porCanal.maps, metricas.porCanal.instagram, metricas.porCanal.cnpj],
+                    backgroundColor: ['#2c6e9e', '#c13584', '#16a34a']
+                }]
+            }
+        });
 
-  // CNPJ
-  document.getElementById('searchSingleBtn').onclick = async () => {
-    const cnpj = document.getElementById('singleCnpj').value;
-    const res = await fetch('/api/search-cnpj', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cnpj }) });
-    const data = await res.json();
-    document.getElementById('singleResult').innerHTML = data.error ? `<p class="text-red-400">${data.error}</p>` : `<p><strong>${data.razao_social}</strong><br>📞 ${data.telefone}<br>📧 ${data.email}<br>📍 ${data.endereco}</p>`;
-  };
-  document.getElementById('searchBatchBtn').onclick = async () => {
-    const raw = document.getElementById('batchCnpjs').value;
-    const cnpjs = raw.split(/\r?\n/).filter(l=>l.trim());
-    const res = await fetch('/api/search-multiple-cnpj', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cnpjs }) });
-    const results = await res.json();
-    document.getElementById('batchResult').innerHTML = `<table class="w-full text-xs"><tbody>${results.map(r=>`<tr><td>${r.cnpj}</td><td>${r.razao_social||r.error}</td><td>${r.telefone||'-'}</td></tr>`).join('')}</tbody></table>`;
-  };
+        // Extratores
+        document.getElementById('extractMapsBtn').onclick = () => {
+            let kw = document.getElementById('mapsKeyword').value;
+            extrairLeads('maps', kw);
+        };
+        document.getElementById('extractIgBtn').onclick = () => {
+            let perfil = document.getElementById('igProfile').value;
+            if(perfil.trim()==='') perfil = "influencers_nichados";
+            extrairLeads('instagram', perfil);
+        };
+        document.getElementById('extractCnpjBtn').onclick = () => {
+            let ramo = document.getElementById('cnpjQuery').value;
+            if(ramo.trim()==='') ramo = "tecnologia";
+            extrairLeads('cnpj', ramo);
+        };
 
-  // Bot IA
-  fetch('/api/bot/status').then(r=>r.json()).then(data => { document.getElementById('botToggle').checked = data.botActive; });
-  document.getElementById('botToggle').onchange = async (e) => { await fetch('/api/bot/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: e.target.checked }) }); };
-  document.getElementById('saveApiBtn').onclick = async () => { const apiKey = document.getElementById('apiKeyInput').value; if(apiKey) await fetch('/api/bot/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey }) }); alert('Chave salva'); };
-  document.getElementById('testAiBtn').onclick = async () => { const msg = document.getElementById('testMsg').value; const res = await fetch('/api/bot/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }) }); const data = await res.json(); document.getElementById('testResponse').innerHTML = data.resposta; };
+        // Funis modulares - troca de abas
+        const tabs = document.querySelectorAll('.tab-btn');
+        const funnelDiv = document.getElementById('funnelContent');
+        function updateFunnel(tipo) {
+            if(tipo === 'audio') {
+                funnelDiv.innerHTML = `<div><i class="fas fa-microphone-alt"></i> Funil de Áudio</div>
+                <textarea class="prompt-area" id="promptAudio" rows="2">🎧 Olá! Ouça nosso áudio exclusivo sobre estratégias de vendas. Após escutar, me diga: qual seu maior desafio agora? Assim ativamos IA qualificadora.</textarea>
+                <button id="simulateFunnelAudio"><i class="fas fa-paper-plane"></i> Simular disparo para lead (WhatsApp)</button>`;
+            } else if(tipo === 'image') {
+                funnelDiv.innerHTML = `<div><i class="fas fa-image"></i> Funil de Imagem</div>
+                <textarea class="prompt-area" id="promptImage" rows="2">🖼️ [imagem: mentoria exclusiva] Responda com "QUERO" e ganhe um bônus. IA vai qualificar e agendar.</textarea>
+                <button id="simulateFunnelImage"><i class="fas fa-paper-plane"></i> Enviar imagem + oferta via WhatsApp</button>`;
+            } else {
+                funnelDiv.innerHTML = `<div><i class="fas fa-file-pdf"></i> Funil PDF</div>
+                <textarea class="prompt-area" id="promptPdf" rows="2">📄 Baixe nosso PDF "Roteiro de Vendas". Após download, ativamos agente para conversão.</textarea>
+                <button id="simulateFunnelPdf"><i class="fas fa-paper-plane"></i> Enviar PDF e iniciar qualificação</button>`;
+            }
+            // reattach event listeners dos botoes dos funis
+            attachFunnelEvents();
+        }
+        function attachFunnelEvents() {
+            let btnAudio = document.getElementById('simulateFunnelAudio');
+            if(btnAudio) btnAudio.onclick = () => { if(leads.maps.length) simularEnvioWhatsapp(leads.maps[0].contato, "maps"); else alert("Nenhum lead capturado nos extratores. Extraia leads primeiro."); };
+            let btnImage = document.getElementById('simulateFunnelImage');
+            if(btnImage) btnImage.onclick = () => { if(leads.instagram.length) simularEnvioWhatsapp(leads.instagram[0].perfil, "instagram"); else alert("Capture leads do Instagram primeiro."); };
+            let btnPdf = document.getElementById('simulateFunnelPdf');
+            if(btnPdf) btnPdf.onclick = () => { if(leads.cnpj.length) simularEnvioWhatsapp(leads.cnpj[0].telefone, "cnpj"); else alert("Leads CNPJ necessários."); };
+        }
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabs.forEach(b=>b.classList.remove('tab-active'));
+                btn.classList.add('tab-active');
+                let tipo = btn.getAttribute('data-funnel');
+                updateFunnel(tipo);
+            });
+        });
+        updateFunnel('audio');
 
-  // CRM - carregar leads e renderizar Kanban
-  async function loadLeads() {
-    const res = await fetch('/api/leads');
-    leads = await res.json();
-    renderKanban();
-    updateDashboard();
-  }
-  function renderKanban() {
-    const stages = { new: 'kanban-new', contact: 'kanban-contact', closed: 'kanban-closed' };
-    for (let stage in stages) document.getElementById(stages[stage]).innerHTML = '';
-    leads.forEach(lead => {
-      const card = document.createElement('div');
-      card.className = 'lead-card bg-slate-700 p-3 rounded cursor-pointer';
-      card.setAttribute('data-id', lead.id);
-      card.innerHTML = `<div class="font-bold">${lead.name}</div><div class="text-xs text-slate-300">${lead.phone || ''}</div><div class="text-xs truncate">${lead.note || ''}</div><button class="text-red-400 text-xs mt-1" onclick="deleteLead(${lead.id})">🗑️ Remover</button>`;
-      document.getElementById(stages[lead.stage]).appendChild(card);
+        // Chat IA & WhatsApp config
+        document.getElementById('sendChatBtn').onclick = () => {
+            let msg = document.getElementById('chatInput').value;
+            if(!msg) return;
+            adicionarMensagemChat("Você", msg, "user");
+            document.getElementById('chatInput').value = '';
+            setTimeout(() => {
+                let respostaIA = `🧠 IA: Recebi sua mensagem. Vou qualificar seu interesse! ${msg.includes('preço') ? 'Nossos planos começam em R$297/mês. Posso conectar você a um especialista?' : 'Ótimo! Para ativar o funil, preciso saber seu principal objetivo de negócio.'}`;
+                adicionarMensagemChat("Agente IA", respostaIA, "ai");
+                // se responder, incrementa resposta (simula lead interagindo)
+                metricas.respostas++;
+                atualizarMetricasUI();
+            }, 800);
+        };
+        document.getElementById('connectWhatsappBtn').onclick = () => {
+            wpConnected = true;
+            document.getElementById('wpStatus').innerHTML = '🟢 Conectado (WhatsApp Demo)';
+            adicionarMensagemChat("Sistema", "✅ WhatsApp conectado com sucesso! Agora você pode disparar mensagens para leads e IA atuar 24/7.", "ai");
+        };
+        // Ajuste automatico campanha
+        document.getElementById('aplicarAjusteIA').onclick = () => {
+            let meta = document.getElementById('metaSlider').value;
+            let insight = `📊 IA ajustou campanhas: novos prompts com gatilhos emocionais ativados, meta de resposta = ${meta}/dia. Funis otimizados com base nos dados de envio (${metricas.envios} envios, ${metricas.respostas} respostas).`;
+            alert(insight);
+            document.getElementById('insightText').innerHTML = insight;
+        };
+        document.getElementById('metaSlider').addEventListener('input', (e) => {
+            document.getElementById('metaValue').innerText = e.target.value;
+        });
+
+        // pré carga demonstrativa: alguns leads iniciais para não ficar vazio
+        setTimeout(() => {
+            extrairLeads('maps', 'demo leads');
+            extrairLeads('instagram', '@influencers');
+            extrairLeads('cnpj', 'consultoria');
+        }, 500);
     });
-    // SortableJS para drag & drop
-    ['kanban-new', 'kanban-contact', 'kanban-closed'].forEach(colId => {
-      const el = document.getElementById(colId);
-      new Sortable(el, { group: 'kanban', animation: 150, onEnd: async (evt) => {
-        const leadId = parseInt(evt.item.getAttribute('data-id'));
-        const newStage = { 'kanban-new': 'new', 'kanban-contact': 'contact', 'kanban-closed': 'closed' }[evt.to.id];
-        await fetch(`/api/leads/${leadId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage: newStage }) });
-        loadLeads();
-      }});
-    });
-  }
-  async function deleteLead(id) { await fetch(`/api/leads/${id}`, { method: 'DELETE' }); loadLeads(); }
-  window.deleteLead = deleteLead;
-  function showAddLeadModal() { document.getElementById('leadModal').classList.add('flex'); document.getElementById('leadModal').classList.remove('hidden'); }
-  window.showAddLeadModal = showAddLeadModal;
-  function closeModal() { document.getElementById('leadModal').classList.add('hidden'); document.getElementById('leadModal').classList.remove('flex'); }
-  window.closeModal = closeModal;
-  async function saveLead() {
-    const name = document.getElementById('leadName').value;
-    const phone = document.getElementById('leadPhone').value;
-    const note = document.getElementById('leadNote').value;
-    if(!name) return;
-    await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, note, stage: 'new' }) });
-    closeModal();
-    loadLeads();
-  }
-  window.saveLead = saveLead;
-  function updateDashboard() {
-    const today = new Date().toDateString();
-    const leadsToday = leads.filter(l => new Date(l.createdAt).toDateString() === today).length;
-    const conversions = leads.filter(l => l.stage === 'closed').length;
-    document.getElementById('leads-today').innerText = leadsToday;
-    document.getElementById('conversions').innerText = conversions;
-  }
-  loadLeads();
-  setInterval(() => fetch('/api/bot/status').then(r=>r.json()).then(data => { document.getElementById('botToggle').checked = data.botActive; }), 5000);
-  showSection('dashboard');
 </script>
 </body>
 </html>
-
-
-        
-       
- 
-   
-      
-             
- 
-    
-
- 
+  
