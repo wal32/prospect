@@ -1,216 +1,91 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prospector - WhatsApp + Bot IA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        .fade-in { animation: fadeIn 0.3s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .tab-btn.active { background-color: #1e293b; color: white; border-bottom: 2px solid #fbbf24; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProspectFlow AI</title>
+<style>
+body{margin:0;font-family:Arial;background:#0f172a;color:#fff}
+.sidebar{width:220px;height:100vh;background:#020617;position:fixed;padding:20px}
+.sidebar h2{color:#38bdf8}
+.sidebar a{display:block;color:#94a3b8;text-decoration:none;margin:15px 0}
+.main{margin-left:240px;padding:20px}
+.card{background:#020617;padding:20px;border-radius:10px;margin-bottom:20px}
+button{background:#38bdf8;border:none;padding:10px;border-radius:5px;color:#000;cursor:pointer}
+.kanban{display:flex;gap:20px}
+.column{flex:1;background:#020617;padding:10px;border-radius:10px}
+.lead{background:#0f172a;margin:10px 0;padding:10px;border-radius:5px}
+input,textarea{width:100%;padding:10px;margin:5px 0;border:none;border-radius:5px}
+</style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 to-slate-800 min-h-screen font-sans">
-<div class="container mx-auto px-4 py-8 max-w-7xl">
-    <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold text-white mb-2"><i class="fas fa-solar-panel text-yellow-400"></i> Prospector Solar <span class="text-sm bg-yellow-600 px-2 py-1 rounded-full">+Bot IA</span></h1>
-        <p class="text-slate-300">Extraia contatos, envie mensagens em massa e automatize respostas com inteligência artificial</p>
-    </div>
+<body>
 
-    <!-- Status e QR Code -->
-    <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8 border border-slate-700">
-        <div class="flex flex-col md:flex-row gap-6 items-center">
-            <div class="flex-1 text-center md:text-left">
-                <div class="flex items-center gap-3 mb-2">
-                    <i class="fab fa-whatsapp text-green-400 text-2xl"></i>
-                    <span class="text-white font-semibold">WhatsApp Web</span>
-                    <span id="status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-600 text-gray-200">Desconectado</span>
-                </div>
-                <button id="connect-btn" class="mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition"><i class="fas fa-plug"></i> Conectar WhatsApp</button>
-                <p id="status-message" class="text-sm text-slate-400 mt-3"></p>
-            </div>
-            <div id="qr-container" class="bg-white p-4 rounded-xl hidden"><img id="qr-image" class="w-48 h-48"><p class="text-xs text-center text-gray-600 mt-2">Escaneie com o WhatsApp</p></div>
-        </div>
-    </div>
-
-    <!-- Abas -->
-    <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
-        <div class="flex flex-wrap border-b border-slate-700">
-            <button id="tab-groups" class="tab-btn active px-5 py-3 text-white"><i class="fas fa-users mr-2"></i> Grupos</button>
-            <button id="tab-cnpj" class="tab-btn px-5 py-3 text-slate-300"><i class="fas fa-building mr-2"></i> CNPJ</button>
-            <button id="tab-send" class="tab-btn px-5 py-3 text-slate-300"><i class="fas fa-paper-plane mr-2"></i> Envio de Msg</button>
-            <button id="tab-bot" class="tab-btn px-5 py-3 text-slate-300"><i class="fas fa-robot mr-2"></i> Bot IA</button>
-        </div>
-
-        <!-- PAINEL GRUPOS -->
-        <div id="groups-panel" class="p-6 fade-in">
-            <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold text-white">Seus grupos</h2><button id="load-groups-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"><i class="fas fa-sync-alt"></i> Carregar</button></div>
-            <div id="groups-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto"><div class="text-slate-400 text-center col-span-2 py-8">Clique em "Carregar"</div></div>
-            <div id="extracted-contacts" class="mt-6 hidden"><h3 class="text-lg font-semibold text-white mb-3"><i class="fas fa-address-book"></i> Contatos extraídos</h3><div class="bg-slate-900 rounded-lg p-4 max-h-80 overflow-y-auto"><table class="w-full text-sm text-slate-300"><thead><tr><th class="text-left">Nome</th><th>Número</th></tr></thead><tbody id="contacts-table"></tbody></table></div>
-            <div class="flex gap-2 mt-3"><button id="export-contacts-csv" class="bg-emerald-600 px-4 py-2 rounded-lg text-sm"><i class="fas fa-file-csv"></i> CSV</button><button id="export-contacts-excel" class="bg-emerald-700 px-4 py-2 rounded-lg text-sm"><i class="fas fa-file-excel"></i> Excel</button><button id="send-bulk-from-group" class="bg-purple-600 px-4 py-2 rounded-lg text-sm"><i class="fas fa-bullhorn"></i> Enviar msg em massa</button></div></div>
-        </div>
-
-        <!-- PAINEL CNPJ -->
-        <div id="cnpj-panel" class="p-6 hidden fade-in">
-            <div class="grid md:grid-cols-2 gap-6">
-                <div><h2 class="text-xl font-bold text-white mb-4">Consulta individual</h2><div class="flex gap-2"><input type="text" id="single-cnpj" placeholder="CNPJ (apenas números)" class="bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white flex-1"><button id="search-single-btn" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg"><i class="fas fa-search"></i></button></div><div id="single-result" class="mt-4 bg-slate-900 rounded-lg p-4 text-sm hidden"></div></div>
-                <div><h2 class="text-xl font-bold text-white mb-4">Consulta em massa</h2><textarea id="batch-cnpjs" rows="4" placeholder="CNPJs um por linha" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm"></textarea><button id="search-batch-btn" class="bg-amber-600 hover:bg-amber-700 w-full mt-2 py-2 rounded-lg">Consultar todos</button><div id="batch-result" class="mt-4 bg-slate-900 rounded-lg p-4 text-sm hidden"></div></div>
-            </div>
-            <div class="mt-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700"><h3 class="text-white font-semibold"><i class="fas fa-lightbulb"></i> Dica de prospecção</h3><p class="text-slate-400 text-sm mt-1">Combine contatos extraídos de grupos com os telefones dos CNPJs para criar sua lista de leads de energia solar.</p></div>
-        </div>
-
-        <!-- PAINEL ENVIO DE MENSAGENS -->
-        <div id="send-panel" class="p-6 hidden fade-in">
-            <div class="grid md:grid-cols-2 gap-6">
-                <div><h2 class="text-xl font-bold text-white mb-4"><i class="fas fa-upload"></i> Importar contatos</h2><input type="file" id="import-file" accept=".xlsx, .xls, .csv" class="bg-slate-900 border border-slate-600 rounded-lg p-2 w-full"><button id="import-btn" class="mt-2 bg-indigo-600 hover:bg-indigo-700 w-full py-2 rounded-lg"><i class="fas fa-cloud-upload-alt"></i> Importar</button><div id="imported-list" class="mt-4 bg-slate-900 rounded-lg p-2 max-h-48 overflow-y-auto text-sm"></div></div>
-                <div><h2 class="text-xl font-bold text-white mb-4"><i class="fas fa-envelope"></i> Enviar mensagem</h2><textarea id="message-text" rows="3" placeholder="Digite sua mensagem aqui..." class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white"></textarea><div class="flex gap-2 mt-2"><button id="send-individual-btn" class="bg-blue-600 flex-1 py-2 rounded-lg"><i class="fab fa-whatsapp"></i> Enviar para selecionado</button><button id="send-mass-btn" class="bg-red-600 flex-1 py-2 rounded-lg"><i class="fas fa-broadcast-tower"></i> Enviar para TODOS</button></div><div class="mt-4"><label class="text-white text-sm">Atraso entre mensagens (ms):</label><input type="number" id="send-delay" value="3000" class="bg-slate-800 border border-slate-600 rounded p-1 w-full text-white"><button id="send-bulk-custom" class="mt-2 bg-amber-600 w-full py-2 rounded-lg"><i class="fas fa-play"></i> Disparo em massa personalizado</button></div></div>
-            </div>
-            <div id="send-result" class="mt-4 text-sm text-slate-300"></div>
-        </div>
-
-        <!-- PAINEL BOT IA -->
-        <div id="bot-panel" class="p-6 hidden fade-in">
-            <div class="bg-slate-900 rounded-xl p-5 border border-slate-600">
-                <div class="flex items-center justify-between"><h2 class="text-2xl font-bold text-white"><i class="fas fa-brain text-purple-400"></i> Assistente Automático (IA)</h2><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="bot-toggle" class="sr-only peer"><div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:bg-green-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div><span class="ml-3 text-white text-sm">Ativo</span></label></div>
-                <p class="text-slate-400 text-sm mt-2">Responderá automaticamente mensagens recebidas (exceto grupos).</p>
-                <div class="mt-4"><label class="text-white block">Chave da API OpenAI (opcional, deixa em branco para respostas pré-definidas)</label><input type="password" id="api-key-input" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white" placeholder="sk-..."><button id="save-api-btn" class="mt-1 bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-sm">Salvar chave</button></div>
-                <div class="mt-4"><label class="text-white block">Prompt do sistema</label><textarea id="system-prompt" rows="3" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white">Você é um assistente de vendas de energia solar. Responda de forma profissional, objetiva e persuasiva.</textarea><button id="save-prompt-btn" class="mt-1 bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-sm">Atualizar prompt</button></div>
-                <div class="mt-4"><button id="test-ai-btn" class="bg-purple-700 hover:bg-purple-600 px-4 py-2 rounded-lg"><i class="fas fa-microphone-alt"></i> Testar IA com uma mensagem</button><div id="test-result" class="mt-2 text-slate-300 text-sm"></div></div>
-            </div>
-        </div>
-    </div>
+<div class="sidebar">
+<h2>ProspectFlow</h2>
+<a href="#">Dashboard</a>
+<a href="#crm">CRM</a>
+<a href="#automacao">Automação</a>
+<a href="#leads">Leads</a>
+<a href="#config">Config</a>
 </div>
 
-<script>
-    const socket = io();
-    let whatsappReady = false;
-    let currentContacts = [];
+<div class="main">
 
-    // DOM
-    const connectBtn = document.getElementById('connect-btn');
-    const statusBadge = document.getElementById('status-badge');
-    const statusMsg = document.getElementById('status-message');
-    const qrContainer = document.getElementById('qr-container');
-    const qrImage = document.getElementById('qr-image');
-    const loadGroupsBtn = document.getElementById('load-groups-btn');
-    const groupsListDiv = document.getElementById('groups-list');
-    const extractedContactsDiv = document.getElementById('extracted-contacts');
-    const contactsTable = document.getElementById('contacts-table');
+<div class="card">
+<h1>Dashboard</h1>
+<p>Leads hoje: 12</p>
+<p>Conversões: 3</p>
+</div>
 
-    // Abas
-    const tabGroups = document.getElementById('tab-groups');
-    const tabCnpj = document.getElementById('tab-cnpj');
-    const tabSend = document.getElementById('tab-send');
-    const tabBot = document.getElementById('tab-bot');
-    const panels = { groups: document.getElementById('groups-panel'), cnpj: document.getElementById('cnpj-panel'), send: document.getElementById('send-panel'), bot: document.getElementById('bot-panel') };
-    function showPanel(panel) { Object.values(panels).forEach(p => p.classList.add('hidden')); panels[panel].classList.remove('hidden'); }
-    tabGroups.onclick = () => { showPanel('groups'); [tabGroups,tabCnpj,tabSend,tabBot].forEach((t,i)=>t.className=`tab-btn px-5 py-3 ${i===0?'active text-white':'text-slate-300'}`); };
-    tabCnpj.onclick = () => { showPanel('cnpj'); };
-    tabSend.onclick = () => showPanel('send');
-    tabBot.onclick = () => showPanel('bot');
+<div class="card" id="crm">
+<h2>CRM Kanban</h2>
+<div class="kanban">
+<div class="column">
+<h3>Novos</h3>
+<div class="lead">João - Interesse</div>
+</div>
+<div class="column">
+<h3>Contato</h3>
+<div class="lead">Maria - Respondeu</div>
+</div>
+<div class="column">
+<h3>Fechado</h3>
+<div class="lead">Carlos - Cliente</div>
+</div>
+</div>
+</div>
 
-    // Socket events
-    socket.on('qr', (data) => { qrContainer.classList.remove('hidden'); qrImage.src = data; statusBadge.innerText = 'Aguardando'; statusBadge.className='px-3 py-1 rounded-full bg-yellow-600 text-white'; statusMsg.innerText='Escaneie o QR'; });
-    socket.on('ready', () => { qrContainer.classList.add('hidden'); statusBadge.innerText='Conectado'; statusBadge.className='px-3 py-1 rounded-full bg-green-600 text-white'; statusMsg.innerText='Pronto!'; whatsappReady=true; });
-    socket.on('error', (e) => { statusMsg.innerText='Erro: '+e; statusBadge.innerText='Erro'; statusBadge.className='px-3 py-1 rounded-full bg-red-600 text-white'; });
-    connectBtn.onclick = async () => { await fetch('/api/connect',{method:'POST'}); };
+<div class="card" id="leads">
+<h2>Adicionar Lead</h2>
+<input placeholder="Nome">
+<input placeholder="WhatsApp">
+<textarea placeholder="Observação"></textarea>
+<button>Salvar</button>
+</div>
 
-    // Carregar grupos
-    loadGroupsBtn.onclick = async () => {
-        if(!whatsappReady){ alert('Aguardando conexão'); return; }
-        const res = await fetch('/api/groups');
-        const groups = await res.json();
-        if(groups.error) return alert(groups.error);
-        groupsListDiv.innerHTML = groups.map(g => `<div class="bg-slate-900 rounded-xl p-4 cursor-pointer hover:bg-slate-700" data-id="${g.id}"><i class="fab fa-whatsapp text-green-400"></i> <span class="font-semibold text-white">${escapeHtml(g.name)}</span> (${g.participantCount})<p class="text-xs text-slate-400">Clique para extrair</p></div>`).join('');
-        document.querySelectorAll('[data-id]').forEach(el => el.addEventListener('click', async (e) => {
-            const groupId = el.dataset.id;
-            const resp = await fetch('/api/extract-contacts', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId}) });
-            const contacts = await resp.json();
-            if(contacts.error) return alert(contacts.error);
-            currentContacts = contacts;
-            contactsTable.innerHTML = contacts.map(c => `<tr><td class="py-1">${escapeHtml(c.name)}</td><td class="py-1">${c.number}</td></tr>`).join('');
-            extractedContactsDiv.classList.remove('hidden');
-        }));
-    };
+<div class="card" id="automacao">
+<h2>Automação IA</h2>
+<textarea placeholder="Mensagem automática"></textarea>
+<button>Ativar Automação</button>
+</div>
 
-    // Exportar contatos
-    document.getElementById('export-contacts-csv').onclick = () => exportContacts('csv');
-    document.getElementById('export-contacts-excel').onclick = () => exportContacts('excel');
-    async function exportContacts(format) {
-        if(!currentContacts.length) return alert('Nenhum contato extraído');
-        if(format === 'csv') {
-            let csv = "Nome,Número\n"+currentContacts.map(c=>`"${c.name}","${c.number}"`).join('\n');
-            const blob = new Blob([csv], {type:'text/csv'});
-            const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download='contatos.csv'; link.click();
-        } else {
-            const res = await fetch('/api/export-contacts', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contacts: currentContacts, filename: 'contatos_grupo.xlsx' }) });
-            const blob = await res.blob();
-            const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download='contatos_grupo.xlsx'; link.click();
-        }
-    }
+<div class="card" id="config">
+<h2>Integração</h2>
+<p>Conectar WhatsApp (QR Code)</p>
+<button>Conectar</button>
+</div>
 
-    // Importar contatos
-    document.getElementById('import-btn').onclick = async () => {
-        const fileInput = document.getElementById('import-file');
-        if(!fileInput.files.length) return alert('Selecione um arquivo');
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        const res = await fetch('/api/import-contacts', { method:'POST', body:formData });
-        const data = await res.json();
-        if(data.success) {
-            currentContacts = data.contacts;
-            document.getElementById('imported-list').innerHTML = `<p class="text-green-400">${data.contacts.length} contatos importados</p><ul class="max-h-32 overflow-auto text-xs">${data.contacts.slice(0,10).map(c=>`<li>${c.name} - ${c.number}</li>`).join('')}${data.contacts.length>10?'<li>...</li>':''}</ul>`;
-        } else alert('Erro ao importar');
-    };
+</div>
 
-    // Envio de mensagens
-    document.getElementById('send-individual-btn').onclick = async () => {
-        let number = prompt('Digite o número do WhatsApp (com DDD, sem + ou espaços)');
-        if(!number) return;
-        const message = document.getElementById('message-text').value;
-        if(!message) return alert('Digite uma mensagem');
-        const res = await fetch('/api/send-message', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ number, message }) });
-        const data = await res.json();
-        alert(data.success ? 'Enviado!' : 'Erro: '+data.error);
-    };
-    document.getElementById('send-mass-btn').onclick = async () => {
-        if(!currentContacts.length) return alert('Nenhum contato carregado');
-        const message = document.getElementById('message-text').value;
-        if(!message) return alert('Digite a mensagem');
-        const numbers = currentContacts.map(c => c.number);
-        const delay = parseInt(document.getElementById('send-delay').value);
-        const res = await fetch('/api/send-bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ numbers, message, delayMs: delay }) });
-        const result = await res.json();
-        document.getElementById('send-result').innerHTML = `<div class="bg-slate-800 p-2 rounded">Enviado: ${result.results.filter(r=>r.status==='success').length} de ${result.results.length}</div>`;
-    };
-    document.getElementById('send-bulk-from-group').onclick = () => { tabSend.click(); document.getElementById('send-mass-btn').click(); };
-    document.getElementById('send-bulk-custom').onclick = () => { document.getElementById('send-mass-btn').click(); };
-
-    // Bot IA (frontend apenas envia configurações)
-    let botActive = false;
-    document.getElementById('bot-toggle').onchange = async (e) => { botActive = e.target.checked; await fetch('/api/bot/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ active: botActive }) }); };
-    document.getElementById('save-api-btn').onclick = async () => { const apiKey = document.getElementById('api-key-input').value; if(!apiKey) return; await fetch('/api/bot/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ apiKey }) }); alert('Chave salva (será usada em novas respostas)'); };
-    document.getElementById('save-prompt-btn').onclick = async () => { const systemPrompt = document.getElementById('system-prompt').value; await fetch('/api/bot/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ systemPrompt }) }); alert('Prompt atualizado'); };
-    document.getElementById('test-ai-btn').onclick = async () => { const msg = prompt('Mensagem de teste para IA:'); if(!msg) return; const res = await fetch('/api/bot/test', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ message: msg }) }); const data = await res.json(); document.getElementById('test-result').innerHTML = `<strong>Resposta:</strong> ${data.resposta}`; };
-
-    // CNPJ (mesmo código anterior)
-    document.getElementById('search-single-btn').onclick = async () => { const cnpj = document.getElementById('single-cnpj').value; const res = await fetch('/api/search-cnpj',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cnpj})}); const data=await res.json(); const div=document.getElementById('single-result'); if(data.error){div.innerHTML=`<p class="text-red-400">${data.error}</p>`;}else{div.innerHTML=`<p><strong>${data.razao_social}</strong><br>Tel: ${data.telefone}<br>Email: ${data.email}<br>Endereço: ${data.endereco}</p>`;} div.classList.remove('hidden'); };
-    document.getElementById('search-batch-btn').onclick = async () => { const raw = document.getElementById('batch-cnpjs').value; const cnpjs = raw.split(/\r?\n/).filter(l=>l.trim()); const res = await fetch('/api/search-multiple-cnpj',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cnpjs})}); const data=await res.json(); document.getElementById('batch-result').innerHTML=`<table class="w-full text-xs"><tbody>${data.map(r=>`<tr><td class="border-b border-slate-700">${r.cnpj}</td><td>${r.razao_social||r.error}</td><td>${r.telefone||'-'}</td></tr>`).join('')}</tbody></table>`; document.getElementById('batch-result').classList.remove('hidden'); };
-
-    function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
-</script>
 </body>
 </html>
-
-            
-       
-
     
 
-   
+  
+  
+        
+       
+ 
    
       
              
